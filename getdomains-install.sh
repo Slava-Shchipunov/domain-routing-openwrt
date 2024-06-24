@@ -56,22 +56,27 @@ add_tunnel() {
             break
             ;;
 
-        2)
+        2) 
+            TUNNEL=awg
+            break
+            ;;
+
+        3)
             TUNNEL=ovpn
             break
             ;;
 
-        3) 
+        4) 
             TUNNEL=singbox
             break
             ;;
 
-        4) 
+        5) 
             TUNNEL=tun2socks
             break
             ;;
 
-        5)
+        6)
             echo "Skip"
             TUNNEL=0
             break
@@ -133,6 +138,70 @@ add_tunnel() {
         uci set network.@wireguard_wg0[0].endpoint_host=$WG_ENDPOINT
         uci set network.@wireguard_wg0[0].allowed_ips='0.0.0.0/0'
         uci set network.@wireguard_wg0[0].endpoint_port=$WG_ENDPOINT_PORT
+        uci commit
+    fi
+
+    if [ "$TUNNEL" == 'awg' ]; then
+        printf "\033[32;1mConfigure Amnezia WireGuard\033[0m\n"
+        if opkg list-installed | grep -q amneziawg-tools; then
+            echo "amneziawg-tools already installed"
+        else
+            echo "Please, install amneziawg-tools and run the script again"
+        fi
+        
+        if opkg list-installed | grep -q kmod-amneziawg; then
+            echo "kmod-amneziawg already installed"
+        else
+            echo "Please, install kmod-amneziawg and run the script again"
+        fi
+        
+        if opkg list-installed | grep -q luci-app-amneziawg; then
+            echo "luci-app-amneziawg already installed"
+        else
+            echo "Please, install kmod-amneziawg and run the script again"
+        fi
+
+        route_vpn
+
+        read -r -p "Enter the private key (from [Interface]):"$'\n' AWG_PRIVATE_KEY
+
+        while true; do
+            read -r -p "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n' AWG_IP
+            if echo "$AWG_IP" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
+                break
+            else
+                echo "This IP is not valid. Please repeat"
+            fi
+        done
+
+        read -r -p "Enter the public key (from [Peer]):"$'\n' AWG_PUBLIC_KEY
+        read -r -p "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' AWG_PRESHARED_KEY
+        read -r -p "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' AWG_ENDPOINT
+
+        read -r -p "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' AWG_ENDPOINT_PORT
+        AWG_ENDPOINT_PORT=${AWG_ENDPOINT_PORT:-51820}
+        if [ "$AWG_ENDPOINT_PORT" = '51820' ]; then
+            echo $AWG_ENDPOINT_PORT
+        fi
+        
+        uci set network.awg0=interface
+        uci set network.awg0.proto='AmneziaWG VPN'
+        uci set network.awg0.private_key=$AWG_PRIVATE_KEY
+        uci set network.awg0.listen_port='51820'
+        uci set network.awg0.addresses=$AWG_IP
+
+        if ! uci show network | grep -q amnezia_awg0; then
+            uci add network amnezia_awg0
+        fi
+        uci set network.@amnezia_awg0[0]=amnezia_awg0
+        uci set network.@amnezia_awg0[0].name='awg0_client'
+        uci set network.@amnezia_awg0[0].public_key=$AWG_PUBLIC_KEY
+        uci set network.@amnezia_awg0[0].preshared_key=$AWG_PRESHARED_KEY
+        uci set network.@amnezia_awg0[0].route_allowed_ips='0'
+        uci set network.@amnezia_awg0[0].persistent_keepalive='25'
+        uci set network.@amnezia_awg0[0].endpoint_host=$AWG_ENDPOINT
+        uci set network.@amnezia_awg0[0].allowed_ips='0.0.0.0/0'
+        uci set network.@amnezia_awg0[0].endpoint_port=$AWG_ENDPOINT_PORT
         uci commit
     fi
 
