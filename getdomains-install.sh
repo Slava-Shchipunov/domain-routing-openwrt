@@ -147,18 +147,21 @@ add_tunnel() {
             echo "amneziawg-tools already installed"
         else
             echo "Please, install amneziawg-tools and run the script again"
+            exit 1
         fi
         
         if opkg list-installed | grep -q kmod-amneziawg; then
             echo "kmod-amneziawg already installed"
         else
             echo "Please, install kmod-amneziawg and run the script again"
+            exit 1
         fi
         
         if opkg list-installed | grep -q luci-app-amneziawg; then
             echo "luci-app-amneziawg already installed"
         else
             echo "Please, install kmod-amneziawg and run the script again"
+            exit 1
         fi
 
         route_vpn
@@ -173,7 +176,20 @@ add_tunnel() {
                 echo "This IP is not valid. Please repeat"
             fi
         done
+        
+        read -r -p "Enter DNS servers separated by comma (from [Interface]):"$'\n' AWG_DNS
+        IFS=',' read -ra AWG_DNS_ARRAY <<< "$AWG_DNS"
 
+        read -r -p "Enter Jc value (from [Interface]):"$'\n' AWG_JC
+        read -r -p "Enter Jmin value (from [Interface]):"$'\n' AWG_JMIN
+        read -r -p "Enter Jmax value (from [Interface]):"$'\n' AWG_JMAX
+        read -r -p "Enter S1 value (from [Interface]):"$'\n' AWG_S1
+        read -r -p "Enter S2 value (from [Interface]):"$'\n' AWG_S2
+        read -r -p "Enter H1 value (from [Interface]):"$'\n' AWG_H1
+        read -r -p "Enter H2 value (from [Interface]):"$'\n' AWG_H2
+        read -r -p "Enter H3 value (from [Interface]):"$'\n' AWG_H3
+        read -r -p "Enter H4 value (from [Interface]):"$'\n' AWG_H4
+    
         read -r -p "Enter the public key (from [Peer]):"$'\n' AWG_PUBLIC_KEY
         read -r -p "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' AWG_PRESHARED_KEY
         read -r -p "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' AWG_ENDPOINT
@@ -185,14 +201,29 @@ add_tunnel() {
         fi
         
         uci set network.awg0=interface
-        uci set network.awg0.proto='AmneziaWG VPN'
+        uci set network.awg0.proto='amneziawg'
         uci set network.awg0.private_key=$AWG_PRIVATE_KEY
         uci set network.awg0.listen_port='51820'
         uci set network.awg0.addresses=$AWG_IP
 
+        for DNS in "${AWG_DNS_ARRAY[@]}"; do
+            uci add_list network.awg0.dns=$DNS
+        done
+
+        uci set network.awg0.awg_jc=$AWG_JC
+        uci set network.awg0.awg_jmin=$AWG_JMIN
+        uci set network.awg0.awg_jmax=$AWG_JMAX
+        uci set network.awg0.awg_s1=$AWG_S1
+        uci set network.awg0.awg_s2=$AWG_S2
+        uci set network.awg0.awg_h1=$AWG_H1
+        uci set network.awg0.awg_h2=$AWG_H2
+        uci set network.awg0.awg_h3=$AWG_H3
+        uci set network.awg0.awg_h4=$AWG_H4
+
         if ! uci show network | grep -q amnezia_awg0; then
             uci add network amnezia_awg0
         fi
+
         uci set network.@amnezia_awg0[0]=amnezia_awg0
         uci set network.@amnezia_awg0[0].name='awg0_client'
         uci set network.@amnezia_awg0[0].public_key=$AWG_PUBLIC_KEY
