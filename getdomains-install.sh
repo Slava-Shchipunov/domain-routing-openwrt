@@ -358,10 +358,12 @@ add_zone() {
         uci set firewall.@zone[-1].name="$TUNNEL"
         if [ "$TUNNEL" == wg ]; then
             uci set firewall.@zone[-1].network='wg0'
+        elif [ "$TUNNEL" == awg ]; then
+            uci set firewall.@zone[-1].device='awg0'
         elif [ "$TUNNEL" == singbox ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
             uci set firewall.@zone[-1].device='tun0'
         fi
-        if [ "$TUNNEL" == wg ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
+        if [ "$TUNNEL" == wg ] || "$TUNNEL" == awg ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
             uci set firewall.@zone[-1].forward='REJECT'
             uci set firewall.@zone[-1].output='ACCEPT'
             uci set firewall.@zone[-1].input='REJECT'
@@ -383,7 +385,7 @@ add_zone() {
     else
         printf "\033[32;1mConfigured forwarding\033[0m\n"
         # Delete exists forwarding
-        if [[ $TUNNEL != "wg" ]]; then
+        if [[ $TUNNEL != "wg" || $TUNNEL != "awg" ]]; then
             forward_id=$(uci show firewall | grep -E "@forwarding.*dest='wg'" | awk -F '[][{}]' '{print $2}' | head -n 1)
             remove_forwarding
         fi
