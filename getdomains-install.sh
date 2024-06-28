@@ -178,7 +178,6 @@ add_tunnel() {
         done
         
         read -r -p "Enter DNS servers separated by comma (from [Interface]):"$'\n' AWG_DNS
-        IFS=',' read -ra AWG_DNS_ARRAY <<< "$AWG_DNS"
 
         read -r -p "Enter Jc value (from [Interface]):"$'\n' AWG_JC
         read -r -p "Enter Jmin value (from [Interface]):"$'\n' AWG_JMIN
@@ -206,7 +205,7 @@ add_tunnel() {
         uci set network.awg0.listen_port='51820'
         uci set network.awg0.addresses=$AWG_IP
 
-        for DNS in "${AWG_DNS_ARRAY[@]}"; do
+        for DNS in $(echo $AWG_DNS | tr ',' ' '); do
             uci add_list network.awg0.dns=$DNS
         done
 
