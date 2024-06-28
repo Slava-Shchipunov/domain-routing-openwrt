@@ -42,10 +42,11 @@ add_tunnel() {
     echo "We can automatically configure only Wireguard. OpenVPN, Sing-box(Shadowsocks2022, VMess, VLESS, etc) and tun2socks will need to be configured manually"
     echo "Select a tunnel:"
     echo "1) WireGuard"
-    echo "2) OpenVPN"
-    echo "3) Sing-box"
-    echo "4) tun2socks"
-    echo "5) Skip this step"
+    echo "2) Amnezia WireGuard"
+    echo "3) OpenVPN"
+    echo "4) Sing-box"
+    echo "5) tun2socks"
+    echo "6) Skip this step"
 
     while true; do
     read -r -p '' TUNNEL
