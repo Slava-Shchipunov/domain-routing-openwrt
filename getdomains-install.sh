@@ -14,6 +14,12 @@ cat << EOF > /etc/hotplug.d/iface/30-vpnroute
 
 ip route add table vpn default dev wg0
 EOF
+    elif [ "$TUNNEL" == awg ]; then
+cat << EOF > /etc/hotplug.d/iface/30-vpnroute
+#!/bin/sh
+
+ip route add table vpn default dev awg0
+EOF
     elif [ "$TUNNEL" == singbox ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
 cat << EOF > /etc/hotplug.d/iface/30-vpnroute
 #!/bin/sh
@@ -220,19 +226,19 @@ add_tunnel() {
         uci set network.awg0.awg_h3=$AWG_H3
         uci set network.awg0.awg_h4=$AWG_H4
 
-        if ! uci show network | grep -q amnezia_awg0; then
-            uci add network amnezia_awg0
+        if ! uci show network | grep -q amneziawg_awg0; then
+            uci add network amneziawg_awg0
         fi
 
-        uci set network.@amnezia_awg0[0]=amnezia_awg0
-        uci set network.@amnezia_awg0[0].name='awg0_client'
-        uci set network.@amnezia_awg0[0].public_key=$AWG_PUBLIC_KEY
-        uci set network.@amnezia_awg0[0].preshared_key=$AWG_PRESHARED_KEY
-        uci set network.@amnezia_awg0[0].route_allowed_ips='0'
-        uci set network.@amnezia_awg0[0].persistent_keepalive='25'
-        uci set network.@amnezia_awg0[0].endpoint_host=$AWG_ENDPOINT
-        uci set network.@amnezia_awg0[0].allowed_ips='0.0.0.0/0'
-        uci set network.@amnezia_awg0[0].endpoint_port=$AWG_ENDPOINT_PORT
+        uci set network.@amneziawg_awg0[0]=amneziawg_awg0
+        uci set network.@amneziawg_awg0[0].name='awg0_client'
+        uci set network.@amneziawg_awg0[0].public_key=$AWG_PUBLIC_KEY
+        uci set network.@amneziawg_awg0[0].preshared_key=$AWG_PRESHARED_KEY
+        uci set network.@amneziawg_awg0[0].route_allowed_ips='0'
+        uci set network.@amneziawg_awg0[0].persistent_keepalive='25'
+        uci set network.@amneziawg_awg0[0].endpoint_host=$AWG_ENDPOINT
+        uci set network.@amneziawg_awg0[0].allowed_ips='0.0.0.0/0'
+        uci set network.@amneziawg_awg0[0].endpoint_port=$AWG_ENDPOINT_PORT
         uci commit
     fi
 
@@ -359,7 +365,7 @@ add_zone() {
         if [ "$TUNNEL" == wg ]; then
             uci set firewall.@zone[-1].network='wg0'
         elif [ "$TUNNEL" == awg ]; then
-            uci set firewall.@zone[-1].device='awg0'
+            uci set firewall.@zone[-1].network='awg0'
         elif [ "$TUNNEL" == singbox ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
             uci set firewall.@zone[-1].device='tun0'
         fi
