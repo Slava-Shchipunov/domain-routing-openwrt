@@ -48,11 +48,12 @@ add_tunnel() {
     echo "We can automatically configure only Wireguard. OpenVPN, Sing-box(Shadowsocks2022, VMess, VLESS, etc) and tun2socks will need to be configured manually"
     echo "Select a tunnel:"
     echo "1) WireGuard"
-    echo "2) Amnezia WireGuard"
-    echo "3) OpenVPN"
-    echo "4) Sing-box"
-    echo "5) tun2socks"
-    echo "6) Skip this step"
+    echo "2) OpenVPN"
+    echo "3) Sing-box"
+    echo "4) tun2socks"
+    echo "5) wgForYoutube"
+    echo "6) Amnezia WireGuard"
+    echo "7) Skip this step"
 
     while true; do
     read -r -p '' TUNNEL
@@ -63,27 +64,32 @@ add_tunnel() {
             break
             ;;
 
-        2) 
-            TUNNEL=awg
-            break
-            ;;
-
-        3)
+        2)
             TUNNEL=ovpn
             break
             ;;
 
-        4) 
+        3) 
             TUNNEL=singbox
             break
             ;;
 
-        5) 
+        4) 
             TUNNEL=tun2socks
             break
             ;;
 
-        6)
+        5) 
+            TUNNEL=wgForYoutube
+            break
+            ;;
+
+        6) 
+            TUNNEL=awg
+            break
+            ;;
+
+        7)
             echo "Skip"
             TUNNEL=0
             break
@@ -146,6 +152,82 @@ add_tunnel() {
         uci set network.@wireguard_wg0[0].allowed_ips='0.0.0.0/0'
         uci set network.@wireguard_wg0[0].endpoint_port=$WG_ENDPOINT_PORT
         uci commit
+    fi
+
+    if [ "$TUNNEL" == 'ovpn' ]; then
+        if opkg list-installed | grep -q openvpn-openssl; then
+            echo "OpenVPN already installed"
+        else
+            echo "Installed openvpn"
+            opkg install openvpn-openssl
+        fi
+        printf "\033[32;1mConfigure route for OpenVPN\033[0m\n"
+        route_vpn
+    fi
+
+    if [ "$TUNNEL" == 'singbox' ]; then
+        if opkg list-installed | grep -q sing-box; then
+            echo "Sing-box already installed"
+        else
+            AVAILABLE_SPACE=$(df / | awk 'NR>1 { print $4 }')
+            if  [[ "$AVAILABLE_SPACE" -gt 2000 ]]; then
+                echo "Installed sing-box"
+                opkg install sing-box
+            else
+                printf "\033[31;1mNo free space for a sing-box. Sing-box is not installed.\033[0m\n"
+                exit 1
+            fi
+        fi
+        if grep -q "option enabled '0'" /etc/config/sing-box; then
+            sed -i "s/	option enabled \'0\'/	option enabled \'1\'/" /etc/config/sing-box
+        fi
+        if grep -q "option user 'sing-box'" /etc/config/sing-box; then
+            sed -i "s/	option user \'sing-box\'/	option user \'root\'/" /etc/config/sing-box
+        fi
+        if grep -q "tun0" /etc/sing-box/config.json; then
+        printf "\033[32;1mConfig /etc/sing-box/config.json already exists\033[0m\n"
+        else
+cat << 'EOF' > /etc/sing-box/config.json
+{
+  "log": {
+    "level": "debug"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "interface_name": "tun0",
+      "domain_strategy": "ipv4_only",
+      "inet4_address": "172.16.250.1/30",
+      "auto_route": false,
+      "strict_route": false,
+      "sniff": true 
+   }
+  ],
+  "outbounds": [
+    {
+      "type": "$TYPE",
+      "server": "$HOST",
+      "server_port": $PORT,
+      "method": "$METHOD",
+      "password": "$PASS"
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true
+  }
+}
+EOF
+        printf "\033[32;1mCreate template config in /etc/sing-box/config.json. Edit it manually. Official doc: https://sing-box.sagernet.org/configuration/outbound/\033[0m\n"
+        printf "\033[32;1mOfficial doc: https://sing-box.sagernet.org/configuration/outbound/\033[0m\n"
+        printf "\033[32;1mManual with example SS: https://cli.co/Badmn3K \033[0m\n"
+
+        fi
+        printf "\033[32;1mConfigure route for Sing-box\033[0m\n"
+        route_vpn
+    fi
+
+    if [ "$TUNNEL" == 'wgForYoutube' ]; then
+        add_internal_wg
     fi
 
     if [ "$TUNNEL" == 'awg' ]; then
@@ -242,77 +324,6 @@ add_tunnel() {
         uci commit
     fi
 
-    if [ "$TUNNEL" == 'ovpn' ]; then
-        if opkg list-installed | grep -q openvpn-openssl; then
-            echo "OpenVPN already installed"
-        else
-            echo "Installed openvpn"
-            opkg install openvpn-openssl
-        fi
-        printf "\033[32;1mConfigure route for OpenVPN\033[0m\n"
-        route_vpn
-    fi
-
-    if [ "$TUNNEL" == 'singbox' ]; then
-        if opkg list-installed | grep -q sing-box; then
-            echo "Sing-box already installed"
-        else
-            AVAILABLE_SPACE=$(df / | awk 'NR>1 { print $4 }')
-            if  [[ "$AVAILABLE_SPACE" -gt 2000 ]]; then
-                echo "Installed sing-box"
-                opkg install sing-box
-            else
-                printf "\033[31;1mNo free space for a sing-box. Sing-box is not installed.\033[0m\n"
-                exit 1
-            fi
-        fi
-        if grep -q "option enabled '0'" /etc/config/sing-box; then
-            sed -i "s/	option enabled \'0\'/	option enabled \'1\'/" /etc/config/sing-box
-        fi
-        if grep -q "option user 'sing-box'" /etc/config/sing-box; then
-            sed -i "s/	option user \'sing-box\'/	option user \'root\'/" /etc/config/sing-box
-        fi
-        if grep -q "tun0" /etc/sing-box/config.json; then
-        printf "\033[32;1mConfig /etc/sing-box/config.json already exists\033[0m\n"
-        else
-cat << 'EOF' > /etc/sing-box/config.json
-{
-  "log": {
-    "level": "debug"
-  },
-  "inbounds": [
-    {
-      "type": "tun",
-      "interface_name": "tun0",
-      "domain_strategy": "ipv4_only",
-      "inet4_address": "172.16.250.1/30",
-      "auto_route": false,
-      "strict_route": false,
-      "sniff": true 
-   }
-  ],
-  "outbounds": [
-    {
-      "type": "$TYPE",
-      "server": "$HOST",
-      "server_port": $PORT,
-      "method": "$METHOD",
-      "password": "$PASS"
-    }
-  ],
-  "route": {
-    "auto_detect_interface": true
-  }
-}
-EOF
-        printf "\033[32;1mCreate template config in /etc/sing-box/config.json. Edit it manually. Official doc: https://sing-box.sagernet.org/configuration/outbound/\033[0m\n"
-        printf "\033[32;1mOfficial doc: https://sing-box.sagernet.org/configuration/outbound/\033[0m\n"
-        printf "\033[32;1mManual with example SS: https://cli.co/Badmn3K \033[0m\n"
-
-        fi
-        printf "\033[32;1mConfigure route for Sing-box\033[0m\n"
-        route_vpn
-    fi
 }
 
 dnsmasqfull() {
@@ -360,6 +371,15 @@ add_zone() {
             while uci -q delete firewall.@zone[$zone_wg_id]; do :; done
         fi
 
+        zone_awg_id=$(uci show firewall | grep -E '@zone.*awg0' | awk -F '[][{}]' '{print $2}' | head -n 1)
+        if [ "$zone_awg_id" == 0 ] || [ "$zone_awg_id" == 1 ]; then
+            printf "\033[32;1mawg0 zone has an identifier of 0 or 1. That's not ok. Fix your firewall. lan and wan zones should have identifiers 0 and 1. \033[0m\n"
+            exit 1
+        fi
+        if [ ! -z "$zone_awg_id" ]; then
+            while uci -q delete firewall.@zone[$zone_awg_id]; do :; done
+        fi
+
         uci add firewall zone
         uci set firewall.@zone[-1].name="$TUNNEL"
         if [ "$TUNNEL" == wg ]; then
@@ -369,7 +389,7 @@ add_zone() {
         elif [ "$TUNNEL" == singbox ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
             uci set firewall.@zone[-1].device='tun0'
         fi
-        if [ "$TUNNEL" == wg ] || "$TUNNEL" == awg ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
+        if [ "$TUNNEL" == wg ] || [ "$TUNNEL" == awg ] || [ "$TUNNEL" == ovpn ] || [ "$TUNNEL" == tun2socks ]; then
             uci set firewall.@zone[-1].forward='REJECT'
             uci set firewall.@zone[-1].output='ACCEPT'
             uci set firewall.@zone[-1].input='REJECT'
@@ -391,8 +411,13 @@ add_zone() {
     else
         printf "\033[32;1mConfigured forwarding\033[0m\n"
         # Delete exists forwarding
-        if [[ $TUNNEL != "wg" || $TUNNEL != "awg" ]]; then
+        if [[ $TUNNEL != "wg"]]; then
             forward_id=$(uci show firewall | grep -E "@forwarding.*dest='wg'" | awk -F '[][{}]' '{print $2}' | head -n 1)
+            remove_forwarding
+        fi
+
+        if [[$TUNNEL != "awg" ]]; then
+            forward_id=$(uci show firewall | grep -E "@forwarding.*dest='awg'" | awk -F '[][{}]' '{print $2}' | head -n 1)
             remove_forwarding
         fi
 
@@ -658,6 +683,147 @@ EOF
 
         /etc/init.d/getdomains start
     fi
+}
+
+add_internal_wg() {
+    printf "\033[32;1mConfigure WireGuard\033[0m\n"
+    if opkg list-installed | grep -q wireguard-tools; then
+        echo "Wireguard already installed"
+    else
+        echo "Installed wg..."
+        opkg install wireguard-tools
+    fi
+
+    read -r -p "Enter the private key (from [Interface]):"$'\n' WG_PRIVATE_KEY_INT
+
+    while true; do
+        read -r -p "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n' WG_IP
+        if echo "$WG_IP" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
+            break
+        else
+            echo "This IP is not valid. Please repeat"
+        fi
+    done
+
+    read -r -p "Enter the public key (from [Peer]):"$'\n' WG_PUBLIC_KEY_INT
+    read -r -p "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' WG_PRESHARED_KEY_INT
+    read -r -p "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' WG_ENDPOINT_INT
+
+    read -r -p "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' WG_ENDPOINT_PORT_INT
+    WG_ENDPOINT_PORT_INT=${WG_ENDPOINT_PORT_INT:-51820}
+    if [ "$WG_ENDPOINT_PORT_INT" = '51820' ]; then
+        echo $WG_ENDPOINT_PORT_INT
+    fi
+    
+    uci set network.wg1=interface
+    uci set network.wg1.proto='wireguard'
+    uci set network.wg1.private_key=$WG_PRIVATE_KEY_INT
+    uci set network.wg1.listen_port='51820'
+    uci set network.wg1.addresses=$WG_IP
+
+    if ! uci show network | grep -q wireguard_wg1; then
+        uci add network wireguard_wg1
+    fi
+    uci set network.@wireguard_wg1[0]=wireguard_wg1
+    uci set network.@wireguard_wg1[0].name='wg1_client'
+    uci set network.@wireguard_wg1[0].public_key=$WG_PUBLIC_KEY_INT
+    uci set network.@wireguard_wg1[0].preshared_key=$WG_PRESHARED_KEY_INT
+    uci set network.@wireguard_wg1[0].route_allowed_ips='0'
+    uci set network.@wireguard_wg1[0].persistent_keepalive='25'
+    uci set network.@wireguard_wg1[0].endpoint_host=$WG_ENDPOINT_INT
+    uci set network.@wireguard_wg1[0].allowed_ips='0.0.0.0/0'
+    uci set network.@wireguard_wg1[0].endpoint_port=$WG_ENDPOINT_PORT_INT
+    uci commit network
+
+    grep -q "110 vpninternal" /etc/iproute2/rt_tables || echo '110 vpninternal' >> /etc/iproute2/rt_tables
+
+    if ! uci show network | grep -q mark0x2; then
+        printf "\033[32;1mConfigure mark rule\033[0m\n"
+        uci add network rule
+        uci set network.@rule[-1].name='mark0x2'
+        uci set network.@rule[-1].mark='0x2'
+        uci set network.@rule[-1].priority='110'
+        uci set network.@rule[-1].lookup='vpninternal'
+        uci commit
+    fi
+
+    if ! uci show network | grep -q vpn_route_internal; then
+        printf "\033[32;1mAdd route\033[0m\n"
+        uci set network.vpn_route_internal=route
+        uci set network.vpn_route_internal.name='vpninternal'
+        uci set network.vpn_route_internal.interface='wg1'
+        uci set network.vpn_route_internal.table='vpninternal'
+        uci set network.vpn_route_internal.target='0.0.0.0/0'
+        uci commit network
+    fi
+
+    if ! uci show firewall | grep -q "@zone.*name='wg_internal'"; then
+        printf "\033[32;1mZone Create\033[0m\n"
+        uci add firewall zone
+        uci set firewall.@zone[-1].name="wg_internal"
+        uci set firewall.@zone[-1].network='wg1'
+        uci set firewall.@zone[-1].forward='REJECT'
+        uci set firewall.@zone[-1].output='ACCEPT'
+        uci set firewall.@zone[-1].input='REJECT'
+        uci set firewall.@zone[-1].masq='1'
+        uci set firewall.@zone[-1].mtu_fix='1'
+        uci set firewall.@zone[-1].family='ipv4'
+        uci commit firewall
+    fi
+
+    if ! uci show firewall | grep -q "@forwarding.*name='wg_internal'"; then
+        printf "\033[32;1mConfigured forwarding\033[0m\n"
+        uci add firewall forwarding
+        uci set firewall.@forwarding[-1]=forwarding
+        uci set firewall.@forwarding[-1].name="wg_internal-lan"
+        uci set firewall.@forwarding[-1].dest="wg_internal"
+        uci set firewall.@forwarding[-1].src='lan'
+        uci set firewall.@forwarding[-1].family='ipv4'
+        uci commit firewall
+    fi
+
+    if uci show firewall | grep -q "@ipset.*name='vpn_domains_internal'"; then
+        printf "\033[32;1mSet already exist\033[0m\n"
+    else
+        printf "\033[32;1mCreate set\033[0m\n"
+        uci add firewall ipset
+        uci set firewall.@ipset[-1].name='vpn_domains_internal'
+        uci set firewall.@ipset[-1].match='dst_net'
+        uci commit firewall
+    fi
+
+    if uci show firewall | grep -q "@rule.*name='mark_domains_intenal'"; then
+        printf "\033[32;1mRule for set already exist\033[0m\n"
+    else
+        printf "\033[32;1mCreate rule set\033[0m\n"
+        uci add firewall rule
+        uci set firewall.@rule[-1]=rule
+        uci set firewall.@rule[-1].name='mark_domains_intenal'
+        uci set firewall.@rule[-1].src='lan'
+        uci set firewall.@rule[-1].dest='*'
+        uci set firewall.@rule[-1].proto='all'
+        uci set firewall.@rule[-1].ipset='vpn_domains_internal'
+        uci set firewall.@rule[-1].set_mark='0x2'
+        uci set firewall.@rule[-1].target='MARK'
+        uci set firewall.@rule[-1].family='ipv4'
+        uci commit firewall
+    fi
+
+    if uci show dhcp | grep -q "@ipset.*name='vpn_domains_internal'"; then
+        printf "\033[32;1mDomain on vpn_domains_internal already exist\033[0m\n"
+    else
+        printf "\033[32;1mCreate domain for vpn_domains_internal\033[0m\n"
+        uci add dhcp ipset
+        uci add_list dhcp.@ipset[-1].name='vpn_domains_internal'
+        uci add_list dhcp.@ipset[-1].domain='googlevideo.com'
+        uci add_list dhcp.@ipset[-1].domain='yt3.ggpht.com'
+        uci commit dhcp
+    fi
+
+    service dnsmasq restart
+    service network restart
+
+    exit 0
 }
 
 # System Details
