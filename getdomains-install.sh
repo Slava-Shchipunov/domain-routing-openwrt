@@ -416,7 +416,7 @@ add_zone() {
             remove_forwarding
         fi
 
-        if [[$TUNNEL != "awg" ]]; then
+        if [[ $TUNNEL != "awg" ]]; then
             forward_id=$(uci show firewall | grep -E "@forwarding.*dest='awg'" | awk -F '[][{}]' '{print $2}' | head -n 1)
             remove_forwarding
         fi
