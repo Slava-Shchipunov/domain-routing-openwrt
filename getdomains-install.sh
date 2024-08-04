@@ -411,7 +411,7 @@ add_zone() {
     else
         printf "\033[32;1mConfigured forwarding\033[0m\n"
         # Delete exists forwarding
-        if [[ $TUNNEL != "wg"]]; then
+        if [[ $TUNNEL != "wg" ]]; then
             forward_id=$(uci show firewall | grep -E "@forwarding.*dest='wg'" | awk -F '[][{}]' '{print $2}' | head -n 1)
             remove_forwarding
         fi
