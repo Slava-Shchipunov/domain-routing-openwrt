@@ -232,26 +232,92 @@ EOF
 
     if [ "$TUNNEL" == 'awg' ]; then
         printf "\033[32;1mConfigure Amnezia WireGuard\033[0m\n"
+
+        # Получение pkgarch с наибольшим приоритетом
+        PKGARCH=$(opkg print-architecture | awk 'BEGIN {max=0} {if ($3 > max) {max = $3; arch = $2}} END {print arch}')
+
+        TARGET=$(ubus call system board | jsonfilter -e '@.release.target' | cut -d '/' -f 1)
+        SUBTARGET=$(ubus call system board | jsonfilter -e '@.release.target' | cut -d '/' -f 2)
+        VERSION=$(ubus call system board | jsonfilter -e '@.release.version')
+        PKGPOSTFIX="_${VERSION}_${PKGARCH}_${TARGET}_${SUBTARGET}.ipk"
+        BASE_URL="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/"
+
+        AWG_DIR="/tmp/amneziawg"
+        mkdir -p "$AWG_DIR"
+
         if opkg list-installed | grep -q amneziawg-tools; then
             echo "amneziawg-tools already installed"
         else
-            echo "Please, install amneziawg-tools and run the script again"
-            exit 1
+            AMNEZIAWG_TOOLS_FILENAME="amneziawg-tools${PKGPOSTFIX}"
+            DOWNLOAD_URL="${BASE_URL}${VERSION}/${AMNEZIAWG_TOOLS_FILENAME}"
+            curl -L -o "$AWG_DIR/$AMNEZIAWG_TOOLS_FILENAME" "$DOWNLOAD_URL"
+
+            if [ $? -eq 0 ]; then
+                echo "amneziawg-tools file downloaded successfully"
+            else
+                echo "Error downloading amneziawg-tools. Please, install amneziawg-tools manually and run the script again"
+                exit 1
+            fi
+            
+            opkg install "$AWG_DIR/$AMNEZIAWG_TOOLS_FILENAME"
+
+            if [ $? -eq 0 ]; then
+                echo "amneziawg-tools file downloaded successfully"
+            else
+                echo "Error installing amneziawg-tools. Please, install amneziawg-tools manually and run the script again"
+                exit 1
+            fi
         fi
         
         if opkg list-installed | grep -q kmod-amneziawg; then
             echo "kmod-amneziawg already installed"
         else
-            echo "Please, install kmod-amneziawg and run the script again"
-            exit 1
+            KMOD_AMNEZIAWG_FILENAME="kmod-amneziawg${PKGPOSTFIX}"
+            DOWNLOAD_URL="${BASE_URL}${VERSION}/${KMOD_AMNEZIAWG_FILENAME}"
+            curl -L -o "$AWG_DIR/$KMOD_AMNEZIAWG_FILENAME" "$DOWNLOAD_URL"
+
+            if [ $? -eq 0 ]; then
+                echo "kmod-amneziawg file downloaded successfully"
+            else
+                echo "Error downloading kmod-amneziawg. Please, install kmod-amneziawg manually and run the script again"
+                exit 1
+            fi
+            
+            opkg install "$AWG_DIR/$KMOD_AMNEZIAWG_FILENAME"
+
+            if [ $? -eq 0 ]; then
+                echo "kmod-amneziawg file downloaded successfully"
+            else
+                echo "Error installing kmod-amneziawg. Please, install kmod-amneziawg manually and run the script again"
+                exit 1
+            fi
         fi
         
         if opkg list-installed | grep -q luci-app-amneziawg; then
             echo "luci-app-amneziawg already installed"
         else
-            echo "Please, install kmod-amneziawg and run the script again"
-            exit 1
+            LUSI_APP_AMNEZIAWG_FILENAME="luci-app-amneziawg${PKGPOSTFIX}"
+            DOWNLOAD_URL="${BASE_URL}${VERSION}/${LUSI_APP_AMNEZIAWG_FILENAME}"
+            curl -L -o "$AWG_DIR/$LUSI_APP_AMNEZIAWG_FILENAME" "$DOWNLOAD_URL"
+
+            if [ $? -eq 0 ]; then
+                echo "luci-app-amneziawg file downloaded successfully"
+            else
+                echo "Error downloading luci-app-amneziawg. Please, install luci-app-amneziawg manually and run the script again"
+                exit 1
+            fi
+
+            opkg install "$AWG_DIR/$LUSI_APP_AMNEZIAWG_FILENAME"
+
+            if [ $? -eq 0 ]; then
+                echo "luci-app-amneziawg file downloaded successfully"
+            else
+                echo "Error installing luci-app-amneziawg. Please, install luci-app-amneziawg manually and run the script again"
+                exit 1
+            fi
         fi
+
+        rm -rf "$AWG_DIR"
 
         route_vpn
 
