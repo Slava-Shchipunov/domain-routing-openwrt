@@ -258,7 +258,9 @@ EOF
                 echo "Error downloading amneziawg-tools. Please, install amneziawg-tools manually and run the script again"
                 exit 1
             fi
-            
+
+            sync
+
             opkg install "$AWG_DIR/$AMNEZIAWG_TOOLS_FILENAME"
 
             if [ $? -eq 0 ]; then
@@ -282,6 +284,8 @@ EOF
                 echo "Error downloading kmod-amneziawg. Please, install kmod-amneziawg manually and run the script again"
                 exit 1
             fi
+
+            sync
             
             opkg install "$AWG_DIR/$KMOD_AMNEZIAWG_FILENAME"
 
@@ -306,6 +310,8 @@ EOF
                 echo "Error downloading luci-app-amneziawg. Please, install luci-app-amneziawg manually and run the script again"
                 exit 1
             fi
+
+            sync
 
             opkg install "$AWG_DIR/$LUCI_APP_AMNEZIAWG_FILENAME"
 
