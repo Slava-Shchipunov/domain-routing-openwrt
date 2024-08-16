@@ -296,9 +296,9 @@ EOF
         if opkg list-installed | grep -q luci-app-amneziawg; then
             echo "luci-app-amneziawg already installed"
         else
-            LUSI_APP_AMNEZIAWG_FILENAME="luci-app-amneziawg${PKGPOSTFIX}"
-            DOWNLOAD_URL="${BASE_URL}${VERSION}/${LUSI_APP_AMNEZIAWG_FILENAME}"
-            curl -L -o "$AWG_DIR/$LUSI_APP_AMNEZIAWG_FILENAME" "$DOWNLOAD_URL"
+            LUCI_APP_AMNEZIAWG_FILENAME="luci-app-amneziawg${PKGPOSTFIX}"
+            DOWNLOAD_URL="${BASE_URL}${VERSION}/${LUCI_APP_AMNEZIAWG_FILENAME}"
+            curl -L -o "$AWG_DIR/$LUCI_APP_AMNEZIAWG_FILENAME" "$DOWNLOAD_URL"
 
             if [ $? -eq 0 ]; then
                 echo "luci-app-amneziawg file downloaded successfully"
@@ -307,7 +307,7 @@ EOF
                 exit 1
             fi
 
-            opkg install "$AWG_DIR/$LUSI_APP_AMNEZIAWG_FILENAME"
+            opkg install "$AWG_DIR/$LUCI_APP_AMNEZIAWG_FILENAME"
 
             if [ $? -eq 0 ]; then
                 echo "luci-app-amneziawg file downloaded successfully"
