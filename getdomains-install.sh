@@ -733,7 +733,7 @@ add_internal_wg() {
     uci set network.${INTERFACE_NAME}=interface
     uci set network.${INTERFACE_NAME}.proto=$PROTO
     uci set network.${INTERFACE_NAME}.private_key=$WG_PRIVATE_KEY_INT
-    uci set network.${INTERFACE_NAME}.listen_port='51820'
+    uci set network.${INTERFACE_NAME}.listen_port='51821'
     uci set network.${INTERFACE_NAME}.addresses=$WG_IP
 
     if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
